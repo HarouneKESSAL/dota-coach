@@ -21,6 +21,14 @@ gh secret set STRATZ_TOKEN --repo HarouneKESSAL/dota-coach
 Without that secret the run still succeeds: it logs a warning and leaves
 `data/brackets.json` as it is, so the OpenDota data keeps refreshing either way.
 
+If Actions is unavailable on the account (a billing lock blocks every workflow),
+the same thing works by hand — Pages republishes on push either way, because it
+uses the legacy build type and does not consume Actions minutes:
+
+```bash
+python bake.py && python bake_stratz.py && git add data/ && git commit -m "Refresh data" && git push
+```
+
 Two guards stand between a bad run and the committed data. The self-checks run
 *before* the bake, so broken logic fails the job instead of overwriting a good
 dataset; and a post-bake check refuses to commit if fewer than 100 heroes came
