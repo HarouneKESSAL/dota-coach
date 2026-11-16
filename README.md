@@ -1,5 +1,7 @@
 # dota-coach
 
+**Live: https://harounekessal.github.io/dota-coach/**
+
 Free coaching for players who can't pay for Dota Plus. Python stdlib only — no
 pip install, no account, no API key, no ML model.
 
