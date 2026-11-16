@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dota Match Review</title>
+<link rel="icon" href="data:,"><!-- keeps the console free of a favicon 404 -->
+<style>
+  :root {
+    --bg: #0f1116;
+    --card: #181b23;
+    --card-2: #1f232d;
+    --line: #2a2f3a;
+    --text: #e7e9ee;
+    --muted: #8d93a3;
+    --accent: #e05d32;
+    --good: #4ade80;
+    --mid: #fbbf24;
+    --bad: #f87171;
+    --radius: 10px;
+  }
+  :root:not([data-theme="dark"]) {
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 28px; font-size: 0.95rem; }
+  .sub a { color: var(--muted); }
+
+  form { display: flex; gap: 8px; margin-bottom: 8px; }
+  input {
+    flex: 1; min-width: 0;
+    padding: 12px 14px;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    font: inherit;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button {
+    padding: 12px 18px; border: 0; border-radius: var(--radius);
+    background: var(--accent); color: #fff; font: inherit; font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { color: var(--muted); font-size: 0.85rem; margin: 0 0 24px; }
+
+  #bracketbar { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; }
+  #bracketbar label { color: var(--muted); font-size: 0.85rem; }
+  select {
+    padding: 7px 10px; background: var(--card); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; font: inherit;
+    font-size: 0.85rem;
+  }
+  select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .msg { padding: 14px 16px; border-radius: var(--radius); background: var(--card); margin-bottom: 16px; }
+  .msg.warn { border-left: 3px solid var(--mid); }
+  .msg.err { border-left: 3px solid var(--bad); }
+  .msg a { color: var(--accent); }
+
+  .players { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
+  .pick {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; text-align: left;
+    background: var(--card); color: var(--text); font-weight: 400;
+    border: 1px solid var(--line);
+  }
+  .pick:hover { background: var(--card-2); filter: none; }
+  .pick[aria-pressed="true"] { border-color: var(--accent); background: var(--card-2); }
+  .pick img { width: 42px; height: 24px; border-radius: 3px; flex: none; background: var(--card-2); }
+  .pick .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+  .pick .kda { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; flex: none; }
+  .side { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px; }
+
+  .report { background: var(--card); border-radius: var(--radius); padding: 20px; }
+  .hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 2px; }
+  .hd h2 { font-size: 1.25rem; margin: 0; }
+  .tag { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; letter-spacing: 0.04em; }
+  .tag.win { background: rgba(74,222,128,0.15); color: var(--good); }
+  .tag.loss { background: rgba(248,113,113,0.15); color: var(--bad); }
+  .stats { color: var(--muted); font-variant-numeric: tabular-nums; margin-bottom: 20px; font-size: 0.9rem; }
+
+  h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 24px 0 10px; font-weight: 600; }
+  h3:first-of-type { margin-top: 0; }
+
+  .bar { display: grid; grid-template-columns: 1fr; gap: 4px; margin-bottom: 12px; }
+  .bar .row { display: flex; justify-content: space-between; font-size: 0.9rem; gap: 12px; }
+  .bar .val { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  .track { height: 6px; background: var(--card-2); border-radius: 99px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 99px; }
+
+  ul.notes { list-style: none; padding: 0; margin: 0; }
+  ul.notes li { padding: 10px 0; border-top: 1px solid var(--line); font-size: 0.93rem; }
+  ul.notes li:first-child { border-top: 0; }
+  .lead { color: var(--accent); font-weight: 600; }
+
+  ul.ranks { list-style: none; padding: 0; margin: 0; }
+  ul.ranks li {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 14px;
+    align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line);
+    font-size: 0.93rem;
+  }
+  ul.ranks li:first-child { border-top: 0; }
+  .mv { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mr { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mr .team { font-weight: 400; color: var(--muted); font-size: 0.85em; }
+  .mr.good { color: var(--good); } .mr.mid { color: var(--mid); } .mr.bad { color: var(--bad); }
+  .quiet { color: var(--muted); font-size: 0.88rem; margin: 0; }
+
+  footer { color: var(--muted); font-size: 0.82rem; margin-top: 40px; text-align: center; }
+  footer a { color: var(--muted); }
+  @media (max-width: 480px) { .players { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dota Match Review</h1>
+  <p class="sub">Paste a match ID. See where you actually lost it. Free, no account.</p>
+
+  <form id="f">
+    <input id="q" placeholder="Match ID or Dotabuff / OpenDota link" inputmode="numeric"
+           autocomplete="off" spellcheck="false" aria-label="Match ID">
+    <button id="go">Review</button>
+  </form>
+  <div id="bracketbar" hidden>
+    <label for="bk">Compare against</label>
+    <select id="bk"></select>
+  </div>
+
+  <p class="hint">Works on any finished match. Replay-parsed ones also get gold-curve
+     and item-timing notes.</p>
+
+  <div id="out"></div>
+
+  <footer>
+    Data from <a href="https://www.opendota.com" target="_blank" rel="noopener">OpenDota</a><span
+      id="stratzcredit" hidden>, rank averages powered by
+      <a href="https://stratz.com" target="_blank" rel="noopener">STRATZ</a></span>.
+    Not affiliated with Valve.
+  </footer>
+</div>
+
+<script>
+const API = "https://api.opendota.com/api";
+const TURBO = 23;
+
+// Only metrics where more is plainly better. OpenDota also exposes
+// deaths_per_min and hero_healing_per_min, but most players tie at 0, which
+// lands a 0 near the 95th percentile and reads as praise for doing nothing.
+const METRICS = {
+  gold_per_min: "GPM",
+  xp_per_min: "XPM",
+  last_hits_per_min: "Last hits / min",
+  hero_damage_per_min: "Hero damage / min",
+};
+
+// Ranking you against the nine other players in your own game needs no extra
+// data, works on matches nobody replay-parsed, and is immune to the two things
+// that make global percentiles lie: Turbo inflating everyone's numbers, and a
+// Herald being measured against Immortals. Same bracket, patch and game length
+// by construction.
+const IN_GAME = [
+  { key: "gold_per_min", label: "GPM" },
+  { key: "xp_per_min", label: "XPM" },
+  { key: "last_hits", label: "Last hits" },
+  { key: "hero_damage", label: "Hero damage" },
+  { key: "deaths", label: "Deaths", lower: true },
+];
+
+// STRATZ field -> OpenDota field. Units were settled against a live response:
+// STRATZ returns per-match averages, which match OpenDota's per-match totals.
+// Two fields are deliberately absent: goldPerMinute comes back null for every
+// row, and xp has no OpenDota counterpart (only xp_per_min), so networth and cs
+// carry the economy comparison instead.
+const VS_BRACKET = [
+  { api: "networth", key: "net_worth", label: "Net worth" },
+  { api: "cs", key: "last_hits", label: "Last hits" },
+  { api: "heroDamage", key: "hero_damage", label: "Hero damage" },
+  { api: "kills", key: "kills", label: "Kills" },
+  { api: "deaths", key: "deaths", label: "Deaths", lower: true },
+  { api: "assists", key: "assists", label: "Assists" },
+];
+
+const out = document.getElementById("out");
+const q = document.getElementById("q");
+const go = document.getElementById("go");
+const bar = document.getElementById("bracketbar");
+const bk = document.getElementById("bk");
+let DATA = null, BRACKETS = null, CURRENT = null;
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.abs(s) % 60).padStart(2, "0")}`;
+
+function note(cls, html) { out.innerHTML = `<div class="msg ${cls}">${html}</div>`; }
+
+/** Lowest-earning 5-minute stretch after the lane phase. */
+function weakestWindow(goldT, minutes = 5) {
+  if (!goldT || goldT.length < 2) return null;
+  const perMin = goldT.slice(1).map((g, i) => g - goldT[i]);
+  if (perMin.length < minutes + 5) return null;
+  let best = null;
+  for (let i = 5; i <= perMin.length - minutes; i++) {
+    const total = perMin.slice(i, i + minutes).reduce((a, b) => a + b, 0);
+    if (!best || total < best.total) best = { start: i, total };
+  }
+  return best;
+}
+
+function ord(n) {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+/** Competition rank of `me` for one metric: 1 + however many beat them. */
+function rankAmong(players, me, key, lower) {
+  const mine = me[key];
+  if (mine === null || mine === undefined) return null;
+  const vals = players.map((p) => p[key]).filter((v) => v !== null && v !== undefined);
+  if (vals.length < 2) return null;
+  const better = vals.filter((v) => (lower ? v < mine : v > mine)).length;
+  return { rank: better + 1, of: vals.length };
+}
+
+const prettyBracket = (s) => s.split("_").map(
+  (w) => w[0] + w.slice(1).toLowerCase()).join("–");
+const prettyPosition = (s) => "Pos " + s.replace("POSITION_", "");
+
+/** Net worth order inside a team is the usual proxy for position 1 to 5. */
+function inferPosition(p, mates) {
+  const nw = (x) => (x.net_worth ?? x.total_gold ?? 0);
+  const sorted = [...mates].sort((a, b) => nw(b) - nw(a));
+  const i = sorted.findIndex((x) => x.player_slot === p.player_slot);
+  return i < 0 ? null : `POSITION_${i + 1}`;
+}
+
+function bracketCell(heroId, bracket, position) {
+  if (!BRACKETS || !bracket || !position) return null;
+  const byBracket = (BRACKETS.heroes || {})[String(heroId)];
+  return (byBracket && byBracket[bracket] && byBracket[bracket][position]) || null;
+}
+
+const heroOf = (id) => DATA.heroes[String(id)] || null;
+const heroName = (id) => (heroOf(id) || {}).name || `Hero ${id}`;
+const portrait = (id) => {
+  const h = heroOf(id);
+  if (!h || !h.npc) return "";
+  return `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${h.npc.replace("npc_dota_hero_", "")}.png`;
+};
+
+function renderPickers(match) {
+  const side = (isRadiant) => match.players
+    .filter((p) => (p.player_slot < 128) === isRadiant)
+    .map((p) => {
+      const i = match.players.indexOf(p);
+      const src = portrait(p.hero_id);
+      return `<button class="pick" data-i="${i}" aria-pressed="false">
+        ${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+        <span class="nm">${esc(heroName(p.hero_id))}</span>
+        <span class="kda">${p.kills}/${p.deaths}/${p.assists}</span>
+      </button>`;
+    }).join("");
+
+  out.innerHTML = `
+    <p class="side">Radiant ${match.radiant_win ? "(won)" : ""}</p>
+    <div class="players">${side(true)}</div>
+    <p class="side">Dire ${match.radiant_win ? "" : "(won)"}</p>
+    <div class="players">${side(false)}</div>
+    <div id="report"></div>`;
+
+  out.querySelectorAll(".pick").forEach((b) => {
+    b.onclick = () => {
+      out.querySelectorAll(".pick").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      renderReport(match.players[+b.dataset.i], match);
+    };
+  });
+}
+
+function renderReport(p, match) {
+  CURRENT = { p, match };
+  const box = document.getElementById("report");
+  const hero = heroName(p.hero_id);
+  const dur = match.duration || 0;
+  const won = p.win === 1;
+
+  const marks = p.benchmarks || {};
+  const scored = Object.keys(METRICS)
+    .filter((m) => marks[m] && marks[m].pct !== null && marks[m].pct !== undefined)
+    .map((m) => ({ m, pct: marks[m].pct }))
+    .sort((a, b) => a.pct - b.pct);
+
+  let html = `<div class="report">
+    <div class="hd">
+      <h2>${esc(hero)}</h2>
+      <span class="tag ${won ? "win" : "loss"}">${won ? "WIN" : "LOSS"}</span>
+      <span class="stats">${mmss(dur)}</span>
+    </div>
+    <p class="stats">${p.kills}/${p.deaths}/${p.assists} &nbsp;·&nbsp;
+       ${p.gold_per_min} GPM &nbsp;·&nbsp; ${p.last_hits} last hits</p>`;
+
+  const mates = match.players.filter(
+    (x) => (x.player_slot < 128) === (p.player_slot < 128));
+  const rows = [];
+  for (const { key, label, lower } of IN_GAME) {
+    const all = rankAmong(match.players, p, key, lower);
+    if (!all) continue;
+    const team = rankAmong(mates, p, key, lower);
+    const cls = all.rank <= 3 ? "good" : all.rank <= 7 ? "mid" : "bad";
+    rows.push(`<li><span>${label}</span><span class="mv">${p[key]}</span>
+      <span class="mr ${cls}">${ord(all.rank)} of ${all.of}${
+        team ? ` <span class="team">· ${ord(team.rank)} on team</span>` : ""}</span></li>`);
+  }
+  if (rows.length) {
+    html += `<h3>In this game</h3><ul class="ranks">${rows.join("")}</ul>`;
+  }
+
+  const bracket = bk.value;
+  const position = inferPosition(p, mates);
+  const cell = bracketCell(p.hero_id, bracket, position);
+
+  // Turbo doubles gold and XP, which skews every comparison against an outside
+  // population — the rank averages just as much as the all-ranks percentiles.
+  // The in-game ranking above is the only part that survives it, so this
+  // warning sits between them.
+  if (match.game_mode === TURBO && (cell || scored.length)) {
+    html += `<div class="msg warn">Turbo match. Turbo roughly doubles gold and XP,
+      so everything below compares you against players who were not in a Turbo
+      game and will flatter you. The in-game ranking above is unaffected.</div>`;
+  }
+
+  if (cell) {
+    const vs = [];
+    for (const { api, key, label, lower } of VS_BRACKET) {
+      const avg = cell[api], mine = p[key];
+      if (avg === undefined || avg === null || !avg || mine === null || mine === undefined) continue;
+      const delta = ((mine - avg) / avg) * 100;
+      const goodWay = lower ? delta < 0 : delta > 0;
+      const cls = Math.abs(delta) < 8 ? "mid" : goodWay ? "good" : "bad";
+      vs.push(`<li><span>${label}</span><span class="mv">${mine} vs ${avg} avg</span>
+        <span class="mr ${cls}">${delta >= 0 ? "+" : ""}${delta.toFixed(0)}%</span></li>`);
+    }
+    if (vs.length) {
+      html += `<h3>Versus ${esc(prettyBracket(bracket))} ${esc(prettyPosition(position))}
+        ${esc(hero)}</h3><ul class="ranks">${vs.join("")}</ul>
+        <p class="quiet">Position guessed from net worth order. Averages from
+        ${cell.n.toLocaleString()} STRATZ matches.${
+          // Net worth, last hits and hero damage are per-match totals, and
+          // STRATZ publishes no average duration to divide by, so an unusually
+          // long or short game skews them.
+          dur && (dur < 1800 || dur > 2700)
+            ? ` At ${Math.floor(dur / 60)} min this game was ${dur > 2700 ? "long" : "short"},
+                and net worth, last hits and hero damage are match totals, so they
+                skew ${dur > 2700 ? "high" : "low"} here.`
+            : ""}</p>`;
+    }
+  }
+
+  if (scored.length) {
+    html += `<h3>Versus other ${esc(hero)} games, all ranks pooled</h3>`;
+    for (const { m, pct } of scored) {
+      const color = pct < 0.35 ? "var(--bad)" : pct < 0.6 ? "var(--mid)" : "var(--good)";
+      const label = pct < 0.5
+        ? `bottom ${Math.round(pct * 100)}%`
+        : `top ${Math.round((1 - pct) * 100)}%`;
+      html += `<div class="bar">
+        <div class="row"><span>${METRICS[m]}</span><span class="val">${label}</span></div>
+        <div class="track"><div class="fill" style="width:${Math.max(2, pct * 100)}%;background:${color}"></div></div>
+      </div>`;
+    }
+  } else if (rows.length) {
+    html += `<p class="quiet">OpenDota has not computed all-games benchmarks for this
+      match, so only the in-game comparison is available.</p>`;
+  } else {
+    html += `<div class="msg warn">Nothing to compare yet. OpenDota has this match but
+      not its stats. Try again in a few minutes.</div></div>`;
+    box.innerHTML = html;
+    return;
+  }
+
+  const notes = [];
+  if (scored.length && scored[0].pct < 0.35) {
+    notes.push(`<span class="lead">Fix first:</span> ${METRICS[scored[0].m]}. It is your
+      weakest number by a clear margin.`);
+  }
+  const w = weakestWindow(p.gold_t);
+  if (w) {
+    notes.push(`Quietest stretch: <strong>${w.start}&ndash;${w.start + 5} min</strong>,
+      ${w.total} gold earned.`);
+  }
+  if (dur && p.deaths > dur / 240) {
+    notes.push(`<strong>${p.deaths} deaths in ${Math.floor(dur / 60)} min</strong> is high.
+      Deaths cost map control, not just gold.`);
+  }
+  const big = (p.purchase_log || []).find((e) => (DATA.item_cost[e.key] || 0) >= 2000);
+  if (big) {
+    notes.push(`First big item: <strong>${esc(DATA.item_name[big.key] || big.key)}</strong>
+      at ${mmss(big.time)}.`);
+  }
+  if (notes.length) {
+    html += `<h3>What to look at</h3><ul class="notes">${notes.map((n) => `<li>${n}</li>`).join("")}</ul>`;
+  }
+
+  box.innerHTML = html + `</div>`;
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/** brackets.json is optional: without a STRATZ bake the picker stays hidden. */
+async function loadBrackets() {
+  try {
+    const r = await fetch("data/brackets.json");
+    if (!r.ok) return;
+    const b = await r.json();
+    if (!b || !b.heroes || !(b.brackets || []).length) return;
+    BRACKETS = b;
+    bk.innerHTML = b.brackets.map(
+      (x) => `<option value="${x}">${prettyBracket(x)}</option>`).join("");
+    let saved = null;
+    try { saved = localStorage.getItem("bracket"); } catch (e) { /* private mode */ }
+    if (saved && b.brackets.includes(saved)) bk.value = saved;
+    bar.hidden = false;
+    // STRATZ asks for the credit only when their data is actually in use.
+    const credit = document.getElementById("stratzcredit");
+    if (credit) credit.hidden = false;
+  } catch (e) { /* no bracket data baked; the rest of the page is unaffected */ }
+}
+
+bk.addEventListener("change", () => {
+  try { localStorage.setItem("bracket", bk.value); } catch (e) { /* private mode */ }
+  if (CURRENT) renderReport(CURRENT.p, CURRENT.match);
+});
+
+async function review(id) {
+  note("", "Loading match&hellip;");
+  go.disabled = true;
+  try {
+    if (!DATA) {
+      DATA = await (await fetch("data/dota.json")).json();
+      await loadBrackets();
+    }
+    const res = await fetch(`${API}/matches/${id}`);
+    if (!res.ok) throw new Error(`OpenDota returned ${res.status}`);
+    const match = await res.json();
+    if (!match || !match.players || !match.players.length) {
+      throw new Error("No match found with that ID.");
+    }
+    // A match that ended moments ago exists as a row before its players are
+    // ingested: ten entries with hero_id 0 and no stats. Showing that picker
+    // would be worse than saying nothing.
+    if (!match.players.some((p) => p.hero_id)) {
+      note("warn", `OpenDota knows this match but has not processed it yet.
+        That usually takes a few minutes after the game ends. Try again shortly,
+        or check it on <a href="https://www.opendota.com/matches/${encodeURIComponent(id)}"
+        target="_blank" rel="noopener">OpenDota</a>.`);
+      return;
+    }
+    renderPickers(match);
+  } catch (e) {
+    note("err", `Could not load that match. ${esc(e.message)}`);
+  } finally {
+    go.disabled = false;
+  }
+}
+
+function submit(ev) {
+  if (ev) ev.preventDefault();
+  // Accepts a bare id, a Dotabuff url, or an OpenDota url.
+  const id = (q.value.match(/\d{6,}/) || [])[0];
+  if (!id) { note("err", "That does not look like a match ID."); return; }
+  // The hash makes a report linkable and survives a reload after a parse.
+  if (location.hash.slice(1) !== id) location.hash = id;
+  else review(id);
+}
+
+document.getElementById("f").addEventListener("submit", submit);
+window.addEventListener("hashchange", () => {
+  const id = location.hash.slice(1);
+  if (/^\d{6,}$/.test(id)) { q.value = id; review(id); }
+});
+
+const boot = location.hash.slice(1);
+if (/^\d{6,}$/.test(boot)) { q.value = boot; review(boot); }
+</script>
+</body>
+</html>

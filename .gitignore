@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+# Never commit a STRATZ token. bake_stratz.py reads it from the environment.
+*.token
+.env
