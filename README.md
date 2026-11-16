@@ -5,6 +5,28 @@
 Free coaching for players who can't pay for Dota Plus. Python stdlib only — no
 pip install, no account, no API key, no ML model.
 
+## Keeping the data fresh
+
+`.github/workflows/bake.yml` re-bakes everything daily at 06:17 UTC and commits
+`data/` back to `main`, which republishes Pages automatically. It also runs on
+demand from the Actions tab.
+
+The OpenDota half needs no credentials and works out of the box. For the STRATZ
+half, add the token once as a repository secret:
+
+```bash
+gh secret set STRATZ_TOKEN --repo HarouneKESSAL/dota-coach
+```
+
+Without that secret the run still succeeds: it logs a warning and leaves
+`data/brackets.json` as it is, so the OpenDota data keeps refreshing either way.
+
+Two guards stand between a bad run and the committed data. The self-checks run
+*before* the bake, so broken logic fails the job instead of overwriting a good
+dataset; and a post-bake check refuses to commit if fewer than 100 heroes came
+back, since a partial dataset is worse than yesterday's complete one. If
+nothing changed, nothing is committed.
+
 ## The web page
 
 `index.html` is the whole product for anyone who isn't you. Paste a match ID or
